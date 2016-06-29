@@ -30,6 +30,13 @@ Features
 
 * TODO
 
+
+Pester us!
+----------
+
+We hang out in the Stack Overflow Python chatroom (http://chat.stackoverflow.com/rooms/6/python), feel free to drop in
+and say "Hi!".
+
 Credits
 -------
 
