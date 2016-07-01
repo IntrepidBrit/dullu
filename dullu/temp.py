@@ -3,20 +3,9 @@ import http.client
 import socket
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup
-from dullu.utils.HTTPStatus import HTTPStatus
+from dullu.HTTPStatus import HTTPStatus
 
-
-def get_all_links(s):
-    """
-    Find all the urls in the text and stick them in a list for later processing.
-
-    :param s: Input string
-    :return: List of links
-    """
-    soup = BeautifulSoup(s, "html.parser")
-    return [link.get('href') for link in soup.find_all('a')]
-
+RABBITMQ_CHANNEL_NAME = 'dullu'
 
 def get_link_status_code(link):
     """
@@ -54,3 +43,10 @@ def get_all_link_status_codes(list_of_links):
         links.append({'link': link, 'code': get_link_status_code(link)})
 
     return links
+
+def act_on_status_codes(list_of_links):
+    # Look through our "naughty list", give them another try and increment if there's a failure.
+    # Look through a batch of historical data, pull out the links and package them off to be tested.
+    # If there's a failure, add them to the "naughty list"
+    # If there are some in the "naughty list" that have too many failures, notify someone.
+    pass

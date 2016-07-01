@@ -3,7 +3,7 @@ import json
 import os
 import random
 from dullu import dullu
-from dullu.utils.HTTPStatus import HTTPStatus
+from dullu.HTTPStatus import HTTPStatus
 
 
 def test_get_all_urls():
