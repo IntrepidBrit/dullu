@@ -4,7 +4,7 @@ import socket
 from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
-from dullu.utils.HTTPStatus import HTTPStatus
+from dullu.HTTPStatus import HTTPStatus
 
 
 def get_all_links(s):

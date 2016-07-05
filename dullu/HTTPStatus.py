@@ -101,3 +101,7 @@ class HTTPStatus(IntEnum):
     NOT_EXTENDED = 510, 'Not Extended'
     NETWORK_AUTHENTICATION_REQUIRED = (511, 'Network Authentication Required',
                                        'The client needs to authenticate to gain network access')
+
+    # custom sopython errors
+    NO_INDEX = (600, 'No Indexing Permitted', 'The host\'s robots.txt has requested that we do not index this page')
+    DNS_LOOKUP_FAILED = (601, 'DNS Lookup Failed', 'Could not resolve the domain\'s URL.')
