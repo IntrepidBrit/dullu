@@ -3,6 +3,7 @@ from urllib.error import URLError
 from urllib.parse import urlparse
 
 import pytest
+import types
 from HTTPStatus import HTTPStatus
 from dullu.linkbot import Linkbot
 
@@ -10,10 +11,14 @@ from dullu.linkbot import Linkbot
 class FakeChannel:
     rejected = False
     requeue = None
+    acknowledged = False
 
-    def reject(self, delivery_tag, requeue):
+    def basic_reject(self, delivery_tag, requeue):
         self.rejected = True
         self.requeue = requeue
+
+    def basic_ack(self, delivery_tag):
+        self.acknowledged = True
 
 
 class FakeMethod:
@@ -36,6 +41,10 @@ def reset_callback_params():
     return FakeChannel(), FakeMethod(), FakeProperties(), FakeBody()
 
 
+def fake_link_rot_action(self, json_body_dict):
+    self.rotted = True
+
+
 def test_linkbot_callback():
     JSON__GOOD = "{\"entity_id\":\"1\",\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\",\"last_stamp\":\"33\",\"attempts\":\"0\"}"
     JSON__TOOSOON = "{{\"entity_id\":\"2\",\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\",\"last_stamp\":\"{0}\",\"attempts\":\"0\"}}".format(int(time.time()))
@@ -46,52 +55,55 @@ def test_linkbot_callback():
     JSON__TOOMANYATTEMPTS = "{{\"entity_id\":\"7\",\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\",\"attempts\":\"{0}\"}}".format(Linkbot.ATTEMPTS_THRESHOLD + 1)
     JSON__INVALID = "[OMFG,I<3radish"
 
+    lb = Linkbot()
+    lb.link_rot_action = types.MethodType(fake_link_rot_action, lb)  # Make sure fake_link_rot_action is properly bound
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__INVALID
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert ch.rejected
     assert not ch.requeue
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__NOID
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert ch.rejected
     assert not ch.requeue
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__NOURL
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert ch.rejected
     assert not ch.requeue
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__NOTYPE
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert ch.rejected
     assert not ch.requeue
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__TOOMANYATTEMPTS
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert ch.rejected
     assert not ch.requeue
+    assert lb.rotted
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__TOOSOON
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert ch.rejected
     assert ch.requeue
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__NOATTEMPTS_KEY
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert not ch.rejected
     assert not ch.requeue
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__GOOD
-    Linkbot.callback_check_url(ch, method, properties, body)
+    lb.callback_check_url(ch, method, properties, body)
     assert not ch.rejected
     assert ch.requeue is None
 

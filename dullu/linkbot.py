@@ -76,7 +76,7 @@ class Linkbot:
             return
 
         if not all(k in json_dict for k in (self.JSON_KEY__ENTITY_ID, self.JSON_KEY__ENTITY_TYPE, self.JSON_KEY__URL)):
-            logging.error("Rejecting request. Missing information ({k1}:{v1},{k2}:{v2},{k2}:{v2}).".format(
+            logging.error("Rejecting request. Missing information ({k1}:{v1},{k2}:{v2},{k3}:{v3}).".format(
                 k1=self.JSON_KEY__ENTITY_ID,
                 k2=self.JSON_KEY__ENTITY_TYPE,
                 k3=self.JSON_KEY__URL,
