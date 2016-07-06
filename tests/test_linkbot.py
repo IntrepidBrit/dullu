@@ -1,3 +1,4 @@
+import time
 from urllib.error import URLError
 from urllib.parse import urlparse
 
@@ -24,8 +25,8 @@ class FakeProperties:
 
 
 class FakeBody:
-    def __init__(self,test_decode_string=''):
-        self.test_decode_string = test_decode_string
+
+    test_decode_string = None
 
     def decode(self):
         return self.test_decode_string
@@ -36,18 +37,63 @@ def reset_callback_params():
 
 
 def test_linkbot_callback():
-    GOOD_JSON = "[{\"entity_id\":\"577ba51b718a354034a91737\",\"url\":\"http://placehold.it/32x32\"}]"
-    BAD_JSON = "[OMFG,I<3radish"
+    JSON__GOOD = "{\"entity_id\":\"1\",\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\",\"last_stamp\":\"33\",\"attempts\":\"0\"}"
+    JSON__TOOSOON = "{{\"entity_id\":\"2\",\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\",\"last_stamp\":\"{0}\",\"attempts\":\"0\"}}".format(int(time.time()))
+    JSON__NOID = "{\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\",\"attempts\":\"0\"}"
+    JSON__NOURL = "{\"entity_id\":\"4\",\"entity_type\":\"q\",\"attempts\":\"0\"}"
+    JSON__NOTYPE = "{\"entity_id\":\"5\",\"url\":\"http://sopython.com/salad/\",\"attempts\":\"0\"}"
+    JSON__NOATTEMPTS_KEY = "{\"entity_id\":\"6\",\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\"}"
+    JSON__TOOMANYATTEMPTS = "{{\"entity_id\":\"7\",\"entity_type\":\"q\",\"url\":\"http://sopython.com/salad/\",\"attempts\":\"{0}\"}}".format(Linkbot.ATTEMPTS_THRESHOLD + 1)
+    JSON__INVALID = "[OMFG,I<3radish"
+
 
     ch, method, properties, body = reset_callback_params()
-    body.test_decode_string = BAD_JSON
+    body.test_decode_string = JSON__INVALID
     Linkbot.callback_check_url(ch, method, properties, body)
     assert ch.rejected
+    assert not ch.requeue
 
     ch, method, properties, body = reset_callback_params()
-    body.test_decode_string = GOOD_JSON
+    body.test_decode_string = JSON__NOID
+    Linkbot.callback_check_url(ch, method, properties, body)
+    assert ch.rejected
+    assert not ch.requeue
+
+    ch, method, properties, body = reset_callback_params()
+    body.test_decode_string = JSON__NOURL
+    Linkbot.callback_check_url(ch, method, properties, body)
+    assert ch.rejected
+    assert not ch.requeue
+
+    ch, method, properties, body = reset_callback_params()
+    body.test_decode_string = JSON__NOTYPE
+    Linkbot.callback_check_url(ch, method, properties, body)
+    assert ch.rejected
+    assert not ch.requeue
+
+    ch, method, properties, body = reset_callback_params()
+    body.test_decode_string = JSON__TOOMANYATTEMPTS
+    Linkbot.callback_check_url(ch, method, properties, body)
+    assert ch.rejected
+    assert not ch.requeue
+
+    ch, method, properties, body = reset_callback_params()
+    body.test_decode_string = JSON__TOOSOON
+    Linkbot.callback_check_url(ch, method, properties, body)
+    assert ch.rejected
+    assert ch.requeue
+
+    ch, method, properties, body = reset_callback_params()
+    body.test_decode_string = JSON__NOATTEMPTS_KEY
     Linkbot.callback_check_url(ch, method, properties, body)
     assert not ch.rejected
+    assert not ch.requeue
+
+    ch, method, properties, body = reset_callback_params()
+    body.test_decode_string = JSON__GOOD
+    Linkbot.callback_check_url(ch, method, properties, body)
+    assert not ch.rejected
+    assert ch.requeue is None
 
 
 URL_GOOD = 'http://sopython.com/salad/'
