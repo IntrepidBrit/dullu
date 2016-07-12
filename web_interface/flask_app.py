@@ -38,7 +38,7 @@ def add_new_url():
         db = MySQLdb.connect(host=db_config['DB']['host'], user=db_config['DB']['user'], passwd=db_config['DB']['password'], db=db_config['DB']['name'])
         try:
             cursor = db.cursor()
-            cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker) VALUES (:entity_id, :type, :url, :attempts, :last_code, :last_stamp, :last_checker);",
+            cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker) VALUES (%(entity_id)s, %(type)s, %(url)s, %(attempts)s, %(last_code)s, %(last_stamp)s, %(last_checker)s);",
                     {'entity_id': rot_json_dict['entity_id'],
                      'type': rot_json_dict['entity_type'],
                      'url': rot_json_dict['url'],
@@ -46,8 +46,8 @@ def add_new_url():
                      'last_code': rot_json_dict['last_code'],
                      'last_stamp': rot_json_dict['last_stamp'],
                      'last_checker': rot_json_dict['last_checker']})
-            row = cursor.fetchone()
-            return row
+            db.commit()
+            return "k"
         finally:
             cursor.close()
             db.close()
