@@ -4,13 +4,15 @@ import json
 import logging
 import socket
 import traceback
+import os
 from urllib.error import URLError
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, urlencode
 from urllib.robotparser import RobotFileParser
-
+from urllib.request import urlopen
 import pika
 from HTTPStatus import HTTPStatus
-
+from web_interface.flask_app import POST_PATH as URL_PUSH_PATH
+from handy.utils import get_hostname
 
 class Linkbot:
     """
@@ -32,14 +34,21 @@ class Linkbot:
     JSON_KEY__URL = 'url'
     JSON_KEY__LAST_TEST_CODE = 'last_code'
     JSON_KEY__LAST_TEST_STAMP = 'last_stamp'
+    JSON_KEY__LAST_CHECKBOT = 'last_checker'
 
-    def __init__(self, broker_address='localhost'):
+    def __init__(self, broker_address='localhost', notification_server_host='localhost', bot_reference=None):
         """
 
         :param broker_address: a unicode string containing the hostname or IP address of the broker.
         """
         self.broker_address = broker_address
         self.user_agent = self.USERAGENT_NAME
+
+        self.notification_server_host = notification_server_host  # TODO - should check for scheme
+        if bot_reference is None:
+            self.bot_reference = "{hostname}.{pid}".format(get_hostname(), os.getpid())
+        else:
+            self.bot_reference = bot_reference
 
     def callback_check_url(self, ch, method, properties, body):
         """
@@ -88,6 +97,14 @@ class Linkbot:
             return
 
         try:
+            '''
+            TODO - issue #7: why was this rotten url pushed BACK onto the queue? Should still be checked at this stage,
+            in case we have a mis-configured bot, but should be removed from the queue and sent to the site.
+
+
+            (what happens if the bot with a lower # of attempts is mis-configured? Hmm.)
+            '''
+
             if int(json_dict[self.JSON_KEY__ATTEMPTS]) > self.ATTEMPTS_THRESHOLD:
                 '''
                 Remove from the queue, inform web service that we have detected some likely link rot and that human
@@ -105,10 +122,9 @@ class Linkbot:
             json_dict[self.JSON_KEY__ATTEMPTS] = 0
 
         try:
-            # to make the comparison below more pretty...
             now = datetime.datetime.now(datetime.timezone.utc)
             then = datetime.datetime.fromtimestamp(int(json_dict[self.JSON_KEY__LAST_TEST_STAMP]),
-                                                  tz=datetime.timezone.utc)
+                                                   tz=datetime.timezone.utc)
 
             if (now - then) < self.MAX_TIME_BETWEEN_TESTS:
                 logging.info("Too soon to retry for {id}:{ty}. Re-adding to the queue.".format(
@@ -127,6 +143,7 @@ class Linkbot:
 
         json_dict[self.JSON_KEY__LAST_TEST_STAMP] = datetime.datetime.now(datetime.timezone.utc).timestamp()
         json_dict[self.JSON_KEY__LAST_TEST_CODE] = status_code
+        json_dict[self.JSON_KEY__LAST_CHECKBOT] = self.bot_reference
 
         if status_code == HTTPStatus.OK:
             logging.debug("OKAY: {url}.".format(url=json_dict[self.JSON_KEY__URL]))
@@ -151,6 +168,10 @@ class Linkbot:
             ch.basic_publish(exchange='', routing_key=self.RABBITMQ_URL_QUEUE_NAME, body=json.dumps(json_dict))
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
+    def push_to_web_interface(self, json_body_dict):
+        # TODO - tomorrow config file handling so I don't accidentally upload authentication information to the repo
+        urlopen(urljoin(self.notification_server_host, URL_PUSH_PATH), data=urlencode(json_body_dict))
+
     def needs_human_verification(self, json_body_dict):
         """
         Currently a placeholder function. Will connect to some notification API.
@@ -169,8 +190,8 @@ class Linkbot:
         :param json_body_dict: The json decoded unicode dict of the message body string
         :return:
         """
-        print("Link rot found: [{0}]; reason: {1}".format(json_body_dict[self.JSON_KEY__URL],
-                                                          json_body_dict[self.JSON_KEY__LAST_TEST_CODE]))
+        self.push_to_web_interface(json_body_dict)
+
 
     def check_robots_txt(self, parsed_link):
         """

@@ -10,6 +10,7 @@ import configparser
 import os
 
 CONFIG_FILE_LOCATION = os.path.join(os.path.dirname(__file__), 'db_info.conf')
+POST_PATH = '/url/new/'
 
 app = Flask(__name__)
 
@@ -21,7 +22,7 @@ def load_db_connection_info_from_parser():
         abort(500)
     return config
 
-@app.route('/url/new/', methods=['POST'])
+@app.route(POST_PATH, methods=['POST'])
 def add_new_url():
     if request.method == 'POST':
         # sanitise incoming json
