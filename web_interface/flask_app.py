@@ -33,11 +33,8 @@ def add_new_url():
         if not all([k in rot_json_dict.keys() for k in ['url', 'entity_id', 'entity_type', 'attempts', 'last_code', 'last_stamp', 'last_checker']]):
             abort(422)
 
-        db_config = load_db_connection_info_from_parser()
-
-        db = MySQLdb.connect(host=db_config['DB']['host'], user=db_config['DB']['user'], passwd=db_config['DB']['password'], db=db_config['DB']['name'])
         try:
-            cursor = db.cursor()
+            db, cursor = db_connect()
             cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker) VALUES (%(entity_id)s, %(type)s, %(url)s, %(attempts)s, %(last_code)s, %(last_stamp)s, %(last_checker)s);",
                     {'entity_id': rot_json_dict['entity_id'],
                      'type': rot_json_dict['entity_type'],
@@ -53,6 +50,23 @@ def add_new_url():
             db.close()
     else:
         abort(422)
+
+def db_connect():
+    db_config = load_db_connection_info_from_parser()
+    db = MySQLdb.connect(host=db_config['DB']['host'], user=db_config['DB']['user'], passwd=db_config['DB']['password'], db=db_config['DB']['name'])
+    cursor = db.cursor()
+    return db, cursor
+
+@app.route('/view/all/')
+def dirtily_simple_view():
+    try:
+        db, cursor = db_connect()
+        cursor.execute("SELECT entity_id, type, url, attempts, last_code, last_stamp, last_checker FROM rot;")
+        sql_results = cursor.fetchall()  # Yeah, because that's a good idea Mark
+    finally:
+        cursor.close()
+        db.close()
+    return render_template('simple_all_view.html', sql_results=sql_results)
 
 @app.route('/')
 def hello_world():

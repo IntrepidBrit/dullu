@@ -1,0 +1,22 @@
+<head>
+    <link rel="stylesheet" type="text/css" href="/unstylish.css">
+</head>
+<h1>Rotten Urls</h1>
+<table>
+    <tr>
+        <th>Entity ID</th>
+        <th>Entity Type</th>
+        <th>URL</th>
+        <th>Attempts</th>
+        <th>Last code</th>
+        <th>Last timestamp (UTC UTS)</th>
+        <th>Last reporter</th>
+    </tr>
+    {% for tuple in sql_results %}
+    <tr>
+        {% for entry in tuple %}
+        <td> {{ entry }} </td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</table>
