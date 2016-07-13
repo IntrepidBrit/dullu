@@ -1,13 +1,14 @@
 
 # A very simple Flask app to display the current state of link rot. Currently relies on HTTP Basic access authentication to protect it.
 
-from flask import Flask, request, make_response, render_template, abort
-from werkzeug.exceptions import BadRequest
-import logging
-import json
-import MySQLdb
 import configparser
+import logging
+
+import MySQLdb
+
 import os
+from flask import Flask, request, render_template, abort
+from werkzeug.exceptions import BadRequest
 
 CONFIG_FILE_LOCATION = os.path.join(os.path.dirname(__file__), 'db_info.conf')
 POST_PATH = '/url/new/'
@@ -34,8 +35,9 @@ def add_new_url():
         if not all([k in rot_json_dict.keys() for k in ['url', 'entity_id', 'entity_type', 'attempts', 'last_code', 'last_stamp', 'last_checker']]):
             abort(422)
 
+        db, cursor = db_connect()
         try:
-            db, cursor = db_connect()
+
             cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker) VALUES (%(entity_id)s, %(type)s, %(url)s, %(attempts)s, %(last_code)s, %(last_stamp)s, %(last_checker)s);",
                     {'entity_id': rot_json_dict['entity_id'],
                      'type': rot_json_dict['entity_type'],
