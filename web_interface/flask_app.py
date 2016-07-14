@@ -7,7 +7,6 @@ import configparser
 import logging
 
 import MySQLdb
-
 import os
 from flask import Flask, request, render_template, abort
 from werkzeug.exceptions import BadRequest
@@ -35,6 +34,16 @@ def add_new_url():
             rot_json_dict = request.get_json()
         except BadRequest:
             return abort(400)
+
+        if rot_json_dict is None:
+            return abort(422)
+
+        try:
+            if rot_json_dict['short'] and rot_json_dict['stout']:
+                return abort(418)
+        except KeyError:
+            pass
+
         # TODO - pull these from elsewhere in the project. Hardcoding for testing.
         if not all([k in rot_json_dict.keys() for k in ['url',
                                                         'entity_id',
@@ -81,6 +90,7 @@ def dirtily_simple_view():
     try:
         cursor.execute("SELECT entity_id, type, url, attempts, last_code, last_stamp, last_checker FROM rot;")
         sql_results = cursor.fetchall()  # Yeah, because that's a good idea Mark
+        # TODO - limit number of rows returned, and accept GET parameters specifying the number to return AND start id
     finally:
         cursor.close()
         db.close()
