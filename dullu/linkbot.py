@@ -37,7 +37,10 @@ class Linkbot:
     JSON_KEY__LAST_TEST_STAMP = 'last_stamp'
     JSON_KEY__LAST_CHECKBOT = 'last_checker'
 
+    CONFIG_FILE__SECTION_SETTINGS = "Settings"
     CONFIG_FILE__NOTIFICATION_SERVER_HOST = "notification_server_host"
+    CONFIG_FILE__NOTIFICATION_SERVER_USERNAME = "notification_server_username"
+    CONFIG_FILE__NOTIFICATION_SERVER_PASSWORD = "notification_server_password"
     CONFIG_FILE__BOT_REFERENCE = "bot_reference"
     CONFIG_FILE__BROKER_HOST = "broker_host"
 
