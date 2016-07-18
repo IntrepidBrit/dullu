@@ -30,6 +30,7 @@ def load_db_connection_info_from_parser():
 def add_new_url():
     if request.method == 'POST':
         # sanitise incoming json
+        
         try:
             rot_json_dict = request.get_json()
         except BadRequest:
@@ -66,12 +67,12 @@ def add_new_url():
                             'last_stamp': rot_json_dict['last_stamp'],
                             'last_checker': rot_json_dict['last_checker']})
             db.commit()
-            return
+            return "k"
         finally:
             cursor.close()
             db.close()
     else:
-        abort(405)
+        return abort(405)
 
 
 def db_connect():
