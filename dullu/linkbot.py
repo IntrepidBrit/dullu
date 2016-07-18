@@ -157,7 +157,7 @@ class Linkbot:
 
         status_code = self.get_url_status_code(json_dict[self.JSON_KEY__URL])
 
-        json_dict[self.JSON_KEY__LAST_TEST_STAMP] = datetime.datetime.now(datetime.timezone.utc).timestamp()
+        json_dict[self.JSON_KEY__LAST_TEST_STAMP] = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
         json_dict[self.JSON_KEY__LAST_TEST_CODE] = status_code
         json_dict[self.JSON_KEY__LAST_CHECKBOT] = self.bot_reference
 
