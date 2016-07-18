@@ -81,6 +81,7 @@ def test_linkbot_callback():
     lb.callback_check_url(ch, method, properties, body)
     assert ch.rejected
     assert not ch.requeue
+    assert lb.rotted is None
 
     ch, method, properties, body = reset_callback_params()
     body.test_decode_string = JSON__TOOMANYATTEMPTS

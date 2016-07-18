@@ -6,13 +6,14 @@ import socket
 import traceback
 import os
 from urllib.error import URLError
-from urllib.parse import urlparse, urljoin, urlencode
+from urllib.parse import urlparse, urljoin
 from urllib.robotparser import RobotFileParser
-from urllib.request import urlopen
+from urllib.request import Request, HTTPBasicAuthHandler, build_opener, install_opener, HTTPPasswordMgrWithDefaultRealm
 import pika
 from HTTPStatus import HTTPStatus
 from web_interface.flask_app import POST_PATH as URL_PUSH_PATH
 from handy.utils import get_hostname
+
 
 class Linkbot:
     """
@@ -26,7 +27,7 @@ class Linkbot:
     USERAGENT_NAME = 'Dullu Linkrot Checker {version_number} (sopython.com)'.format(version_number="0.0.0")
     ATTEMPTS_THRESHOLD = 5
     MAX_TIME_BETWEEN_TESTS = datetime.timedelta(days=1)
-    # MAX_TIME_BETWEEN_TESTS = datetime.timedelta(seconds=10)  # just for development
+    # MAX_TIME_BETWEEN_TESTS = datetime.timedelta(seconds=1)  # just for development
 
     JSON_KEY__ENTITY_ID = 'entity_id'
     JSON_KEY__ENTITY_TYPE = 'entity_type'
@@ -36,17 +37,30 @@ class Linkbot:
     JSON_KEY__LAST_TEST_STAMP = 'last_stamp'
     JSON_KEY__LAST_CHECKBOT = 'last_checker'
 
-    def __init__(self, broker_address='localhost', notification_server_host='localhost', bot_reference=None):
+    CONFIG_FILE__NOTIFICATION_SERVER_HOST = "notification_server_host"
+    CONFIG_FILE__BOT_REFERENCE = "bot_reference"
+    CONFIG_FILE__BROKER_HOST = "broker_host"
+
+    def __init__(self, broker_address='localhost',
+                 notification_server_host='localhost',
+                 notification_server_username='JohnSmith',
+                 notification_server_password='passwort',
+                 bot_reference=None,
+                 user_agent=USERAGENT_NAME):
         """
 
         :param broker_address: a unicode string containing the hostname or IP address of the broker.
         """
-        self.broker_address = broker_address
-        self.user_agent = self.USERAGENT_NAME
 
-        self.notification_server_host = notification_server_host  # TODO - should check for scheme
+        self.broker_address = broker_address
+        self.user_agent = user_agent
+
+        self.notification_server_host = notification_server_host
+        self.notification_server_username = notification_server_username
+        self.notification_server_password = notification_server_password
+
         if bot_reference is None:
-            self.bot_reference = "{hostname}.{pid}".format(get_hostname(), os.getpid())
+            self.bot_reference = "{hostname}.{pid}".format(hostname=get_hostname(), pid=os.getpid())
         else:
             self.bot_reference = bot_reference
 
@@ -110,7 +124,6 @@ class Linkbot:
                 Remove from the queue, inform web service that we have detected some likely link rot and that human
                 intervention is required '''
 
-                # TODO - convert my pythonanywhere instance for link rot notification
                 logging.info("Too many failed attempts for {id}:{ty}. Adding to rot list.".format(
                     id=json_dict[self.JSON_KEY__ENTITY_ID],
                     ty=json_dict[self.JSON_KEY__ENTITY_TYPE]))
@@ -169,8 +182,25 @@ class Linkbot:
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def push_to_web_interface(self, json_body_dict):
-        # TODO - tomorrow config file handling so I don't accidentally upload authentication information to the repo
-        urlopen(urljoin(self.notification_server_host, URL_PUSH_PATH), data=urlencode(json_body_dict))
+        destination_url = urljoin(self.notification_server_host, URL_PUSH_PATH)
+        data = json.dumps(json_body_dict).encode("utf-8")
+
+        passman = HTTPPasswordMgrWithDefaultRealm()
+        un = self.notification_server_username
+        pw = self.notification_server_password
+        top_level_url = self.notification_server_host
+        passman.add_password(None, top_level_url, un, pw)
+
+        auth_handler = HTTPBasicAuthHandler(passman)
+        opener = build_opener(auth_handler)
+        opener.open(top_level_url)
+        install_opener(opener)
+
+        request = Request(destination_url, data=data, headers={'Content-Type': 'application/json',
+                                                               'User-Agent': self.user_agent})
+        opener.open(request)
+
+        #  TODO - what should we do when we can't get access to the notification server? Or it errors.
 
     def needs_human_verification(self, json_body_dict):
         """
@@ -181,6 +211,7 @@ class Linkbot:
         print("Need a human to check: \"{url}\"; reason: {reason} ".format(
             url=json_body_dict[self.JSON_KEY__URL],
             reason=json_body_dict[self.JSON_KEY__LAST_TEST_CODE]))
+        self.push_to_web_interface(json_body_dict)
 
     def link_rot_action(self, json_body_dict):
         """
@@ -191,7 +222,6 @@ class Linkbot:
         :return:
         """
         self.push_to_web_interface(json_body_dict)
-
 
     def check_robots_txt(self, parsed_link):
         """
@@ -210,7 +240,6 @@ class Linkbot:
         like winerror.
 
         :param url:
-        :param link: a string containing an url
         :return: HTTPStatus enum - the http status code returned when we visited that url.
         """
         # noinspection PyArgumentList
@@ -257,9 +286,10 @@ class Linkbot:
             channel.basic_qos(prefetch_count=1)
             logging.info("Ready to start consuming")
             channel.start_consuming()
-        except:
+        except Exception as e:
             logging.warning("Exception detected.")
             logging.error(traceback.format_exc())
+            raise e
         finally:
             logging.info("Link bot terminating...".format(self.broker_address))
             connection.close()

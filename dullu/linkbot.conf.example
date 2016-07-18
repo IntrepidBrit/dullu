@@ -1,0 +1,6 @@
+[Settings]
+notification_server_host = http://notification.server.address
+notification_server_username = JohnSmith
+notification_server_password = passwort
+bot_reference = JohnSmith
+broker_host = localhost
