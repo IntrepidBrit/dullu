@@ -1,9 +1,10 @@
 CREATE TABLE rot (
-uid BIGINT PRIMARY KEY NOT NULL,
 entity_id NUMERIC,
 type VARCHAR(1),
-url VARCHAR(2000),
+url TEXT,
+url_hash VARCHAR(128),
 attempts TINYINT,
 last_code SMALLINT,
-last_stamp DATETIME,
-last_checker VARCHAR(256) )
+last_stamp BIGINT,
+last_checker VARCHAR(256),
+PRIMARY KEY (entity_id, type, url_hash));

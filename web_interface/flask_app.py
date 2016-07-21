@@ -5,10 +5,10 @@ authentication to protect it.
 
 import configparser
 import logging
-
+import hashlib
 import MySQLdb
 import os
-from flask import Flask, request, render_template, abort
+from flask import Flask, request, render_template, abort, Response
 from werkzeug.exceptions import BadRequest
 
 CONFIG_FILE_LOCATION = os.path.join(os.path.dirname(__file__), 'db_info.conf')
@@ -30,7 +30,7 @@ def load_db_connection_info_from_parser():
 def add_new_url():
     if request.method == 'POST':
         # sanitise incoming json
-        
+
         try:
             rot_json_dict = request.get_json()
         except BadRequest:
@@ -55,19 +55,25 @@ def add_new_url():
                                                         'last_checker']]):
             return abort(422)
 
+        url_hash = hashlib.sha512(rot_json_dict['url'].encode('utf-8')).hexdigest()
+
         db, cursor = db_connect()
         try:
 
-            cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker) VALUES (%(entity_id)s, %(type)s, %(url)s, %(attempts)s, %(last_code)s, %(last_stamp)s, %(last_checker)s);",
+            cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker, url_hash) "
+                           "VALUES (%(entity_id)s, %(type)s, %(url)s, %(attempts)s, %(last_code)s, %(last_stamp)s, %(last_checker)s), %(url_hash)s"
+                           "ON DUPLICATE KEY UPDATE"
+                           "attempts=%(attempts)s, last_code=%(last_code)s, last_stamp=%(last_stamp)s, last_checker=%(last_checker)s;",
                            {'entity_id': rot_json_dict['entity_id'],
                             'type': rot_json_dict['entity_type'],
                             'url': rot_json_dict['url'],
                             'attempts': rot_json_dict['attempts'],
                             'last_code': rot_json_dict['last_code'],
                             'last_stamp': rot_json_dict['last_stamp'],
-                            'last_checker': rot_json_dict['last_checker']})
+                            'last_checker': rot_json_dict['last_checker'],
+                            'url_hash': url_hash})
             db.commit()
-            return "k"
+            return Response(None, status=202)  # Should move across to using an ORM. Should return 201 if created.
         finally:
             cursor.close()
             db.close()
