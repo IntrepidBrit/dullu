@@ -13,6 +13,7 @@ import pika
 from HTTPStatus import HTTPStatus
 from web_interface.flask_app import POST_PATH as URL_PUSH_PATH
 from handy.utils import get_hostname
+from dullu import Dullu
 
 
 class Linkbot:
@@ -23,19 +24,10 @@ class Linkbot:
 
     Dullu's primary workers will handle any url caching and the like.
     """
-    RABBITMQ_URL_QUEUE_NAME = 'dullu_url_queue'
     USERAGENT_NAME = 'Dullu Linkrot Checker {version_number} (sopython.com)'.format(version_number="0.0.0")
     ATTEMPTS_THRESHOLD = 5
     MAX_TIME_BETWEEN_TESTS = datetime.timedelta(days=1)
     # MAX_TIME_BETWEEN_TESTS = datetime.timedelta(seconds=1)  # just for development
-
-    JSON_KEY__ENTITY_ID = 'entity_id'
-    JSON_KEY__ENTITY_TYPE = 'entity_type'
-    JSON_KEY__ATTEMPTS = 'attempts'
-    JSON_KEY__URL = 'url'
-    JSON_KEY__LAST_TEST_CODE = 'last_code'
-    JSON_KEY__LAST_TEST_STAMP = 'last_stamp'
-    JSON_KEY__LAST_CHECKBOT = 'last_checker'
 
     CONFIG_FILE__SECTION_SETTINGS = "Settings"
     CONFIG_FILE__NOTIFICATION_SERVER_HOST = "notification_server_host"
@@ -101,14 +93,16 @@ class Linkbot:
             ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
 
-        if not all(k in json_dict for k in (self.JSON_KEY__ENTITY_ID, self.JSON_KEY__ENTITY_TYPE, self.JSON_KEY__URL)):
+        if not all(k in json_dict for k in (Dullu.JSON_KEY__URLQ__ENTITY_ID,
+                                            Dullu.JSON_KEY__URLQ__ENTITY_TYPE,
+                                            Dullu.JSON_KEY__URLQ__URL)):
             logging.error("Rejecting request. Missing information ({k1}:{v1},{k2}:{v2},{k3}:{v3}).".format(
-                k1=self.JSON_KEY__ENTITY_ID,
-                k2=self.JSON_KEY__ENTITY_TYPE,
-                k3=self.JSON_KEY__URL,
-                v1=self.JSON_KEY__ENTITY_ID in json_dict,
-                v2=self.JSON_KEY__ENTITY_TYPE in json_dict,
-                v3=self.JSON_KEY__URL in json_dict))
+                k1=Dullu.JSON_KEY__URLQ__ENTITY_ID,
+                k2=Dullu.JSON_KEY__URLQ__ENTITY_TYPE,
+                k3=Dullu.JSON_KEY__URLQ__URL,
+                v1=Dullu.JSON_KEY__URLQ__ENTITY_ID in json_dict,
+                v2=Dullu.JSON_KEY__URLQ__ENTITY_TYPE in json_dict,
+                v3=Dullu.JSON_KEY__URLQ__URL in json_dict))
 
             ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
@@ -122,54 +116,54 @@ class Linkbot:
             (what happens if the bot with a lower # of attempts is mis-configured? Hmm.)
             '''
 
-            if int(json_dict[self.JSON_KEY__ATTEMPTS]) > self.ATTEMPTS_THRESHOLD:
+            if int(json_dict[Dullu.JSON_KEY__URLQ__ATTEMPTS]) > self.ATTEMPTS_THRESHOLD:
                 '''
                 Remove from the queue, inform web service that we have detected some likely link rot and that human
                 intervention is required '''
 
                 logging.info("Too many failed attempts for {id}:{ty}. Adding to rot list.".format(
-                    id=json_dict[self.JSON_KEY__ENTITY_ID],
-                    ty=json_dict[self.JSON_KEY__ENTITY_TYPE]))
+                    id=json_dict[Dullu.JSON_KEY__URLQ__ENTITY_ID],
+                    ty=json_dict[Dullu.JSON_KEY__URLQ__ENTITY_TYPE]))
 
                 self.link_rot_action(json_dict)
                 ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
                 return
         except KeyError:
-            json_dict[self.JSON_KEY__ATTEMPTS] = 0
+            json_dict[Dullu.JSON_KEY__URLQ__ATTEMPTS] = 0
 
         try:
             now = datetime.datetime.now(datetime.timezone.utc)
-            then = datetime.datetime.fromtimestamp(int(json_dict[self.JSON_KEY__LAST_TEST_STAMP]),
+            then = datetime.datetime.fromtimestamp(int(json_dict[Dullu.JSON_KEY__URLQ__LAST_TEST_STAMP]),
                                                    tz=datetime.timezone.utc)
 
             if (now - then) < self.MAX_TIME_BETWEEN_TESTS:
                 logging.info("Too soon to retry for {id}:{ty}. Re-adding to the queue.".format(
-                    id=json_dict[self.JSON_KEY__ENTITY_ID],
-                    ty=json_dict[self.JSON_KEY__ENTITY_TYPE]))
+                    id=json_dict[Dullu.JSON_KEY__URLQ__ENTITY_ID],
+                    ty=json_dict[Dullu.JSON_KEY__URLQ__ENTITY_TYPE]))
 
                 ch.basic_reject(delivery_tag=method.delivery_tag, requeue=True)
                 return
 
         except KeyError:
-            json_dict[self.JSON_KEY__LAST_TEST_STAMP] = 0
+            json_dict[Dullu.JSON_KEY__URLQ__LAST_TEST_STAMP] = 0
 
-        logging.debug("Checking {url}.".format(url=json_dict[self.JSON_KEY__URL]))
+        logging.debug("Checking {url}.".format(url=json_dict[Dullu.JSON_KEY__URLQ__URL]))
 
-        status_code = self.get_url_status_code(json_dict[self.JSON_KEY__URL])
+        status_code = self.get_url_status_code(json_dict[Dullu.JSON_KEY__URLQ__URL])
 
-        json_dict[self.JSON_KEY__LAST_TEST_STAMP] = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-        json_dict[self.JSON_KEY__LAST_TEST_CODE] = status_code
-        json_dict[self.JSON_KEY__LAST_CHECKBOT] = self.bot_reference
+        json_dict[Dullu.JSON_KEY__URLQ__LAST_TEST_STAMP] = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        json_dict[Dullu.JSON_KEY__URLQ__LAST_TEST_CODE] = status_code
+        json_dict[Dullu.JSON_KEY__URLQ__LAST_CHECKBOT] = self.bot_reference
 
         if status_code == HTTPStatus.OK:
-            logging.debug("OKAY: {url}.".format(url=json_dict[self.JSON_KEY__URL]))
+            logging.debug("OKAY: {url}.".format(url=json_dict[Dullu.JSON_KEY__URLQ__URL]))
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         # Do any status code specific handling here.
         elif status_code == HTTPStatus.NO_INDEX or status_code == HTTPStatus.MOVED_PERMANENTLY:
             logging.info("Manual intervention required for {url} [code = {code}].".format(
-                url=json_dict[self.JSON_KEY__URL],
-                code=json_dict[self.JSON_KEY__LAST_TEST_CODE]))
+                url=json_dict[Dullu.JSON_KEY__URLQ__URL],
+                code=json_dict[Dullu.JSON_KEY__URLQ__LAST_TEST_CODE]))
 
             self.needs_human_verification(json_dict)
             ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -177,11 +171,11 @@ class Linkbot:
         # Treat everything else the same
         else:
             logging.debug("Putting {url} back on the queue. [Code = {code}].".format(
-                url=json_dict[self.JSON_KEY__URL],
-                code=json_dict[self.JSON_KEY__LAST_TEST_CODE]))
+                url=json_dict[Dullu.JSON_KEY__URLQ__URL],
+                code=json_dict[Dullu.JSON_KEY__URLQ__LAST_TEST_CODE]))
 
-            json_dict[self.JSON_KEY__ATTEMPTS] = int(json_dict[self.JSON_KEY__ATTEMPTS]) + 1
-            ch.basic_publish(exchange='', routing_key=self.RABBITMQ_URL_QUEUE_NAME, body=json.dumps(json_dict))
+            json_dict[Dullu.JSON_KEY__URLQ__ATTEMPTS] = int(json_dict[Dullu.JSON_KEY__URLQ__ATTEMPTS]) + 1
+            ch.basic_publish(exchange='', routing_key=Dullu.RABBITMQ_QUEUE_URL_NAME, body=json.dumps(json_dict))
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def push_to_web_interface(self, json_body_dict):
@@ -212,8 +206,8 @@ class Linkbot:
         :return:
         """
         print("Need a human to check: \"{url}\"; reason: {reason} ".format(
-            url=json_body_dict[self.JSON_KEY__URL],
-            reason=json_body_dict[self.JSON_KEY__LAST_TEST_CODE]))
+            url=json_body_dict[Dullu.JSON_KEY__URLQ__URL],
+            reason=json_body_dict[Dullu.JSON_KEY__URLQ__LAST_TEST_CODE]))
         self.push_to_web_interface(json_body_dict)
 
     def link_rot_action(self, json_body_dict):
@@ -284,8 +278,8 @@ class Linkbot:
 
         try:
             channel = connection.channel()
-            channel.queue_declare(queue=self.RABBITMQ_URL_QUEUE_NAME, durable=True)
-            channel.basic_consume(self.callback_check_url, queue=self.RABBITMQ_URL_QUEUE_NAME, no_ack=False)
+            channel.queue_declare(queue=Dullu.RABBITMQ_QUEUE_URL_NAME, durable=True)
+            channel.basic_consume(self.callback_check_url, queue=Dullu.RABBITMQ_QUEUE_URL_NAME, no_ack=False)
             channel.basic_qos(prefetch_count=1)
             logging.info("Ready to start consuming")
             channel.start_consuming()
@@ -294,6 +288,6 @@ class Linkbot:
             logging.error(traceback.format_exc())
             raise e
         finally:
-            logging.info("Link bot terminating...".format(self.broker_address))
+            logging.info("Link bot terminating...")
             connection.close()
             logging.debug("Fin.")

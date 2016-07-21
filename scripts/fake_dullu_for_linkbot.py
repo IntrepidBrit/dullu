@@ -3,8 +3,7 @@ Puts a url onto the linkbot queue for testing purposes.
 """
 
 import json
-
-import linkbot
+from dullu import Dullu
 import pika
 
 if __name__ == "__main__":
@@ -19,9 +18,9 @@ if __name__ == "__main__":
 
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
-    channel.queue_declare(queue=linkbot.Linkbot.RABBITMQ_URL_QUEUE_NAME, durable=True)
+    channel.queue_declare(queue=Dullu.RABBITMQ_URL_QUEUE_NAME, durable=True)
     channel.basic_publish(exchange='',
-                          routing_key=linkbot.Linkbot.RABBITMQ_URL_QUEUE_NAME,
+                          routing_key=Dullu.RABBITMQ_URL_QUEUE_NAME,
                           body=jdump)
     print(" [x] Sent!")
     connection.close()
