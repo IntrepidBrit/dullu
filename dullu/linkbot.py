@@ -15,7 +15,6 @@ from web_interface.flask_app import POST_PATH as URL_PUSH_PATH
 from handy.utils import get_hostname
 from dullu import Dullu
 
-
 class Linkbot:
     """
     The class responsible for actually going out and checking the links. There is little "forward-thinking" in the
@@ -26,8 +25,8 @@ class Linkbot:
     """
     USERAGENT_NAME = 'Dullu Linkrot Checker {version_number} (sopython.com)'.format(version_number="0.0.0")
     ATTEMPTS_THRESHOLD = 5
-    MAX_TIME_BETWEEN_TESTS = datetime.timedelta(days=1)
-    # MAX_TIME_BETWEEN_TESTS = datetime.timedelta(seconds=1)  # just for development
+    MAX_TIME_BETWEEN_TESTS = datetime.timedelta(hours=1)
+    # MAX_TIME_BETWEEN_TESTS = datetime.timedelta(seconds=10)  # just for development
 
     CONFIG_FILE__SECTION_SETTINGS = "Settings"
     CONFIG_FILE__NOTIFICATION_SERVER_HOST = "notification_server_host"

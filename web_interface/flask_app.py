@@ -100,6 +100,7 @@ def dirtily_simple_view():
 
         sql_results = [(result[0], result[1], result[2], result[3], result[4], result[5], result[6],) for result in sql_results]
         # TODO - limit number of rows returned, and accept GET parameters specifying the number to return AND start id
+        # TODO - limit number of rows returned, and accept GET parameters specifying the number to return AND start id
     finally:
         cursor.close()
         db.close()
