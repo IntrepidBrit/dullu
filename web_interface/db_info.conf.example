@@ -1,0 +1,6 @@
+; Once you've finished editing, rename this file to be db_info.conf
+[DB]
+    host = my.database.domain
+    user = database_user
+    password = megaawesomepassword,IreallyHopeYouChangeThis
+    name = database_name

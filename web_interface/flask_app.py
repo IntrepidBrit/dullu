@@ -8,6 +8,7 @@ import logging
 import hashlib
 import MySQLdb
 import os
+import os.path as osp
 from flask import Flask, request, render_template, abort, Response
 from werkzeug.exceptions import BadRequest
 
@@ -59,10 +60,10 @@ def add_new_url():
 
         db, cursor = db_connect()
         try:
-
-            cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker, url_hash) "
-                           "VALUES (%(entity_id)s, %(type)s, %(url)s, %(attempts)s, %(last_code)s, %(last_stamp)s, %(last_checker)s), %(url_hash)s"
-                           "ON DUPLICATE KEY UPDATE"
+            try:
+                cursor.execute("INSERT INTO rot (entity_id, type, url, attempts, last_code, last_stamp, last_checker, url_hash) "
+                           "VALUES (%(entity_id)s, %(type)s, %(url)s, %(attempts)s, %(last_code)s, %(last_stamp)s, %(last_checker)s, %(url_hash)s) "
+                           "ON DUPLICATE KEY UPDATE "
                            "attempts=%(attempts)s, last_code=%(last_code)s, last_stamp=%(last_stamp)s, last_checker=%(last_checker)s;",
                            {'entity_id': rot_json_dict['entity_id'],
                             'type': rot_json_dict['entity_type'],
@@ -72,7 +73,11 @@ def add_new_url():
                             'last_stamp': rot_json_dict['last_stamp'],
                             'last_checker': rot_json_dict['last_checker'],
                             'url_hash': url_hash})
-            db.commit()
+                db.commit()
+            except:
+                '''with open(osp.join(osp.dirname(osp.abspath(__file__)), "blah"), "wb") as f:  # for debug
+                    f.write(cursor._last_executed)'''
+                raise
             return Response(None, status=202)  # Should move across to using an ORM. Should return 201 if created.
         finally:
             cursor.close()
