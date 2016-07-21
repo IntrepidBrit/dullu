@@ -17,12 +17,8 @@ if __name__ == "__main__":
     TODO - commit this current batch of work, then uncomment the following code. Going to implement some enums based on
     the stack exchange API
     """
-    """json_dict = {Dullu.JSON_KEY__ENTITYQ__ID: sample_question_json[Dullu.JSON_KEY__ENTITYQ__ID],
-                 Dullu.JSON_KEY__ENTITYQ__TYPE: sample_question_json[Dullu.JSON_KEY__ENTITYQ__TYPE],
-                 Dullu.JSON_KEY__ENTITYQ__BODY: sample_question_json[Dullu.JSON_KEY__ENTITYQ__BODY]}"""
-
     json_dict = {Dullu.JSON_KEY__ENTITYQ__ID: sample_question_json[Dullu.JSON_KEY__ENTITYQ__ID],
-                 Dullu.JSON_KEY__ENTITYQ__TYPE: "q",
+                 Dullu.JSON_KEY__ENTITYQ__TYPE: sample_question_json[Dullu.JSON_KEY__ENTITYQ__TYPE],
                  Dullu.JSON_KEY__ENTITYQ__BODY: sample_question_json[Dullu.JSON_KEY__ENTITYQ__BODY]}
 
     jdump = json.dumps(json_dict)

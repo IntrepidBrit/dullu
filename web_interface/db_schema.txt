@@ -1,6 +1,6 @@
 CREATE TABLE rot (
 entity_id NUMERIC,
-type VARCHAR(1),
+type TINYINT,
 url TEXT,
 url_hash VARCHAR(128),
 attempts TINYINT,

@@ -3,6 +3,7 @@ import pika
 import logging
 import traceback
 import json
+import se.api
 from bs4 import BeautifulSoup
 
 
@@ -12,7 +13,7 @@ class Dullu:
 
     # Entity queue, up for change though. Other side not coded.
     JSON_KEY__ENTITYQ__ID = 'Id'
-    JSON_KEY__ENTITYQ__TYPE = 'type'
+    JSON_KEY__ENTITYQ__TYPE = 'PostTypeId'
     JSON_KEY__ENTITYQ__BODY = 'Body'
 
     # URL queue
@@ -47,6 +48,18 @@ class Dullu:
                 v2=self.JSON_KEY__ENTITYQ__TYPE in json_dict,
                 v3=self.JSON_KEY__ENTITYQ__BODY in json_dict))
 
+            ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+            return
+
+        """
+        We currently only process certain different types of entities. questions/answers (hopefully comments and docs)
+        in the future. We may need special handling for them depending on how eridu ends up working.
+        """
+
+        try:
+            entity_type = se.api.PostType(json_dict[self.JSON_KEY__ENTITYQ__TYPE])
+        except ValueError as ve:
+            logging.error("Received an entity we're unwilling to process [{0}]. ".format(json_dict[self.JSON_KEY__ENTITYQ__TYPE]))
             ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
             return
 
